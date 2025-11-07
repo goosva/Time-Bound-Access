@@ -1,0 +1,82 @@
+import pandas as pd
+
+# Original Policies and Rules Database
+#    Name   Resource01    Resource02    Resource03
+# 0  Alice   [r, w, e]       []            []
+# 1  Bob       []          [r, w, e]       []
+# 2  Caleb     []            []          [r, w, e]
+ground_rules = {
+    "Name"             : ["Alice", "Bob", "Caleb"],
+    "Project Alpha"    : [["r", "w", "e"], [], []],
+    "Project Beta"     : [[], ["r", "w", "e"], []],
+    "Project Charlie": [[], [], ["r", "w", "e"]]
+}
+df_rules = pd.DataFrame(ground_rules)
+#print(df_rules)
+
+
+################################################
+######## update comments ######################
+######## Operation and flow has changed ###########
+######## So comments are outdated here #############
+###################################################
+
+# Returns OG DB Perm Bool AND Token Perm Bool
+# Given Requested User, resource at hand, and permission(s) wanting to carry out + Has Token Bool Val
+# Get row:        Alice:  []  []  [r, w, e]
+# Get token row:  ALice:  []  []  []   <time limit>
+# Check if permission available for specific resource in OG DB or token DB
+# First Bool is TRUE -> If perm are present for OG DB resource
+# Second Bool is TRUE -> If Has token bool true + perms in token resource
+# Else, return false, false
+def has_permission_or_token(user, resource, permission, token):
+    row = df_rules[df_rules["Name"] == user]
+    perm = row.iloc[0][resource]
+    #token_row = df_token[df_token["Name"] == user]
+    tok_perm = row.iloc[0][resource]
+
+    # check if token access first
+    if token:
+        if not tok_perm: # empty token list
+            return False, False
+
+        elif set(permission).issubset(tok_perm): # requested perms are at tok DB resource
+            return False, True
+
+        else: # Requested perms not at tok DB resource
+            return False, False
+
+    else:
+        if not perm: # empty list of perms at OG DB
+            return False, False
+
+        elif set(permission).issubset(perm): # permission exists in OG DB
+            return True, False
+
+        else:
+            return False, False
+
+
+
+
+
+
+# NOT CORRECT NEEDS MODIFICATION
+# Prints and Notifies user if they have specific permission for specific resource
+def policy_notifier(decision, user, resource, permission):
+    perm_list =[]
+    for perm in permission:
+        if perm == 'r':
+            perm_list.append('read')
+        if perm == 'w':
+            perm_list.append('modify')
+        if perm == 'e':
+            perm_list.append('execute')
+
+    if decision == "True with Token":
+        return f"{user} can temporarily {', '.join(perm_list)} {resource}."
+
+    elif decision == True:
+        return f"{user} can {', '.join(perm_list)} {resource}."
+    else:
+        return f"{user} cannot {', '.join(perm_list)} {resource}."
