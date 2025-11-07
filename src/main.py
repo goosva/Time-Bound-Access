@@ -1,4 +1,22 @@
 import pandas as pd
+from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+
+@dataclass # Token Class
+class Token:
+    user: str
+    resource: str
+    permissions: list
+    duration: int  # in seconds
+    expires_at: datetime = field(init=False)  # Expiration time calculated at initialization
+
+    def __post_init__(self):
+        self.expires_at = datetime.now() + timedelta(seconds=self.duration) # set expiration time
+    
+    def active(self) -> bool: # returns True if token is still valid
+        return datetime.now() < self.expires_at # Check if current time is before expiration time
+
+
 
 # Original Policies and Rules Database
 #    Name   Resource01    Resource02    Resource03
