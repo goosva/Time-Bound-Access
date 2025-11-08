@@ -3,6 +3,18 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import time
 
+
+audit_log = []
+
+
+def log_event(event_type, **details):
+    entry = {"timestamp": datetime.now(), "event": event_type, **details}
+    audit_log.append(entry)
+
+
+
+
+
 @dataclass # Token Class
 class Token:
     user: str
@@ -114,10 +126,33 @@ def policy_notifier(original_decision,tok_decision, user, resource, permission, 
 def access(user, resource, perm, tok):
         original_check, tok_check = has_permission(user, resource, perm, tok)
         decision = policy_notifier(original_check, tok_check, user, resource, perm, tok)
+        status = "token" if tok_check else ("original" if original_check else "denied")
+        log_event(
+            "access",
+            user=user,
+            resource=resource,
+            permissions="".join(perm),
+            status=status,
+        )
         return decision
 
+def timestamp(label: str, message: str) -> str:
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return f"[{ts}] {label}: {message}"
 
+def display_audit_log(filepath="audit_log.txt"):
+    header = "=== AUDIT LOG ==="
+    lines = [header]
+    for entry in audit_log:
+        ts = entry["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+        details = ", ".join(
+            f"{k}={v}" for k, v in entry.items() if k not in {"timestamp", "event"}
+        )
+        lines.append(f"[{ts}] {entry['event']}: {details}")
 
+    print("\n" + "\n".join(lines))
+    with open(filepath, "w", encoding="utf-8") as log_file:
+        log_file.write("\n".join(lines))
 
 #####################################################
 ###################### DEMO #########################
@@ -129,17 +164,26 @@ res_2 = 'Project Beta'
 perm = ['r']
 tok = None
 
-original_perm_success = access(user, res_1, perm, tok)
-no_tok_reject =         access(user, res_2, perm, tok)
-print("Original Request:                ", original_perm_success)
+
+print(timestamp("Original Request", access(user, res_1, perm, tok)),'\n') # Original Permission Success
 time.sleep(3) # just to give time to show printing ^^^
-print("Denial with no Token:            ",no_tok_reject,'\n')
+print(timestamp("Denial with no Token", access(user, res_2, perm, tok)),'\n') # No Token Reject
 time.sleep(3) # just to give time to show printing ^^^
 tok = Token(user='Alice', resource='Project Beta', permissions=['r'], duration=5) # GENERATE TOKEN
+log_event(
+    "token_issued",
+    user=tok.user,
+    resource=tok.resource,
+    permissions="".join(tok.permissions),
+    duration=tok.duration,
+    expires_at=tok.expires_at.isoformat(),
+)
 
 tok_success =           access(user, res_2, perm, tok)
-print("Success with token:              ",tok_success,'\n')
+print(timestamp("Success with Token", tok_success),'\n')
 time.sleep(5) # PAUSE CODE
 
 tok_expire_reject =     access(user, res_2, perm, tok)
-print("Denial after token expiration:   ", tok_expire_reject)
+print(timestamp("Denial after Token Expiration", tok_expire_reject),'\n')
+
+display_audit_log()
