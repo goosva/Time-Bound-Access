@@ -5,8 +5,6 @@ import time
 
 
 audit_log = []
-
-
 def log_event(event_type, **details):
     entry = {"timestamp": datetime.now(), "event": event_type, **details}
     audit_log.append(entry)
@@ -167,9 +165,17 @@ tok = None
 
 print(timestamp("Original Request", access(user, res_1, perm, tok)),'\n') # Original Permission Success
 time.sleep(3) # just to give time to show printing ^^^
+
+
+
 print(timestamp("Denial with no Token", access(user, res_2, perm, tok)),'\n') # No Token Reject
 time.sleep(3) # just to give time to show printing ^^^
-tok = Token(user='Alice', resource='Project Beta', permissions=['r'], duration=5) # GENERATE TOKEN
+#Manually create token for Alice to access Project Beta with read permission for 5 seconds
+tok = Token(user='Alice', resource='Project Beta', permissions=['r'], duration=5) 
+
+
+
+# Manual log event for token issuance
 log_event(
     "token_issued",
     user=tok.user,
@@ -178,6 +184,7 @@ log_event(
     duration=tok.duration,
     expires_at=tok.expires_at.isoformat(),
 )
+
 
 tok_success =           access(user, res_2, perm, tok)
 print(timestamp("Success with Token", tok_success),'\n')
